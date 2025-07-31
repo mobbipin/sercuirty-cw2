@@ -5,12 +5,15 @@ import Swal from 'sweetalert2';
 import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 import { apiService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import ReCaptcha from './ReCaptcha';
 
 const Signup = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showOTPForm, setShowOTPForm] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [passwordStrength, setPasswordStrength] = useState(null);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaError, setCaptchaError] = useState('');
   const navigate = useNavigate();
   const { setUser } = useAuth();
 
@@ -24,7 +27,23 @@ const Signup = () => {
 
   const password = watch('password', '');
 
+  const handleCaptchaVerify = (token) => {
+    setCaptchaToken(token);
+    setCaptchaError('');
+  };
+
+  const handleCaptchaExpire = () => {
+    setCaptchaToken('');
+    setCaptchaError('reCAPTCHA has expired. Please verify again.');
+  };
+
   const onSubmit = async (data) => {
+    // Validate reCAPTCHA
+    if (!captchaToken) {
+      setCaptchaError('Please complete the reCAPTCHA verification.');
+      return;
+    }
+
     if (!passwordStrength?.isValid) {
       Swal.fire({
         icon: 'error',
@@ -42,7 +61,8 @@ const Signup = () => {
         name: data.name,
         password: data.password,
         role: data.role,
-        company: data.company || null
+        company: data.company || null,
+        captchaToken: captchaToken
       });
 
       if (response.success) {
@@ -410,6 +430,13 @@ const Signup = () => {
           {errors.terms && (
             <p className="mt-1 text-sm text-red-600">{errors.terms.message}</p>
           )}
+
+          {/* reCAPTCHA */}
+          <ReCaptcha
+            onVerify={handleCaptchaVerify}
+            onExpire={handleCaptchaExpire}
+            error={captchaError}
+          />
 
           <button
             type="submit"

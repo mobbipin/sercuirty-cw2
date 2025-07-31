@@ -14,16 +14,19 @@ const {
   SECURITY_CONFIG
 } = require('../config/security');
 const emailService = require('../services/emailService');
+const recaptchaService = require('../services/recaptchaService');
+const { authLimiter, registerLimiter, passwordResetLimiter } = require('../middleware/rateLimiter');
 
 // In-memory OTP storage (in production, use Redis)
 const otpStore = new Map();
 const passwordResetTokens = new Map();
 
 // User registration with email verification
-router.post('/register', [
+router.post('/register', registerLimiter, [
   body('email').isEmail().normalizeEmail(),
   body('name').trim().isLength({ min: 2, max: 50 }),
   body('role').isIn(['jobseeker', 'employer']),
+  body('captchaToken').notEmpty().withMessage('reCAPTCHA verification required'),
   ...passwordValidationRules
 ], async (req, res) => {
   try {
@@ -35,9 +38,18 @@ router.post('/register', [
       });
     }
 
-    const { email, name, password, role, company } = req.body;
+    const { email, name, password, role, company, captchaToken } = req.body;
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('User-Agent');
+
+    // Verify reCAPTCHA
+    const captchaResult = await recaptchaService.verifySignupCaptcha(captchaToken, ipAddress);
+    if (!captchaResult.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: captchaResult.message
+      });
+    }
 
     // Check password strength
     const passwordStrength = checkPasswordStrength(password);
@@ -235,9 +247,10 @@ router.post('/verify-email', [
 });
 
 // User login with security features
-router.post('/login', [
+router.post('/login', authLimiter, [
   body('email').isEmail().normalizeEmail(),
-  body('password').notEmpty()
+  body('password').notEmpty(),
+  body('captchaToken').notEmpty().withMessage('reCAPTCHA verification required')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -248,9 +261,18 @@ router.post('/login', [
       });
     }
 
-    const { email, password } = req.body;
+    const { email, password, captchaToken } = req.body;
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('User-Agent');
+
+    // Verify reCAPTCHA
+    const captchaResult = await recaptchaService.verifyLoginCaptcha(captchaToken, ipAddress);
+    if (!captchaResult.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: captchaResult.message
+      });
+    }
 
     // Find user
     const user = await req.db.collection('users').findOne({ email });
@@ -362,7 +384,7 @@ router.post('/login', [
 });
 
 // Password reset request
-router.post('/forgot-password', [
+router.post('/forgot-password', passwordResetLimiter, [
   body('email').isEmail().normalizeEmail()
 ], async (req, res) => {
   try {

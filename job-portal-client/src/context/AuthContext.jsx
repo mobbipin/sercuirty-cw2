@@ -47,9 +47,9 @@ export const AuthProvider = ({ children }) => {
     checkAuthStatus();
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (email, password, captchaToken) => {
     try {
-      const response = await apiService.login(email, password);
+      const response = await apiService.login(email, password, captchaToken);
       if (response.success) {
         setUser(response.user);
         setUserProfile(response.user);

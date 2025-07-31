@@ -23,11 +23,17 @@ const {
   sanitizeInput
 } = require('./middleware/auth');
 
+// Import security headers middleware
+const securityHeaders = require('./middleware/securityHeaders');
+const requestLogger = require('./middleware/requestLogger');
+
 // Apply security middleware
 app.use(securityMiddleware.helmet);
 app.use(securityMiddleware.xssClean);
 app.use(securityMiddleware.hpp);
 app.use(securityMiddleware.mongoSanitize);
+app.use(securityHeaders);
+app.use(requestLogger);
 
 // CORS configuration
 app.use(cors({
@@ -532,7 +538,9 @@ async function run() {
 
     // Import and use authentication routes
     const authRoutes = require('./routes/auth');
+    const securityRoutes = require('./routes/security');
     app.use('/api/auth', authRateLimiter, authRoutes);
+    app.use('/api/security', securityRoutes);
 
     // Job APIs with security
     app.post("/api/jobs", authenticateUser, requireRole(['employer']), async (req, res) => {

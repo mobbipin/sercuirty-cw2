@@ -10,6 +10,7 @@ import Login from "../components/Login";
 import JobDetails from "../assets/Pages/JobDetails";
 import Signup from "../components/Signup";
 import ResetPassword from "../components/ResetPassword";
+import SecurityDashboard from "../components/SecurityDashboard";
 
 const router = createBrowserRouter([
     {
@@ -50,6 +51,10 @@ const router = createBrowserRouter([
         {
           path: "/reset-password",
           element: <ResetPassword/>
+        },
+        {
+          path: "/security-dashboard",
+          element: <SecurityDashboard/>
         }
       ],
     }

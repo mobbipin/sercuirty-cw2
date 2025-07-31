@@ -4,11 +4,14 @@ import { useForm } from 'react-hook-form';
 import Swal from 'sweetalert2';
 import { apiService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import ReCaptcha from './ReCaptcha';
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [loginAttempts, setLoginAttempts] = useState(0);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaError, setCaptchaError] = useState('');
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -27,11 +30,27 @@ const Login = () => {
     }
   }, [navigate]);
 
+  const handleCaptchaVerify = (token) => {
+    setCaptchaToken(token);
+    setCaptchaError('');
+  };
+
+  const handleCaptchaExpire = () => {
+    setCaptchaToken('');
+    setCaptchaError('reCAPTCHA has expired. Please verify again.');
+  };
+
   const onSubmit = async (data) => {
+    // Validate reCAPTCHA
+    if (!captchaToken) {
+      setCaptchaError('Please complete the reCAPTCHA verification.');
+      return;
+    }
+
     try {
       setIsLoading(true);
 
-      const loginResult = await login(data.email, data.password);
+      const loginResult = await login(data.email, data.password, captchaToken);
 
       if (loginResult.success) {
         // Reset login attempts on successful login
@@ -268,6 +287,13 @@ const Login = () => {
               </button>
             </div>
           </div>
+
+          {/* reCAPTCHA */}
+          <ReCaptcha
+            onVerify={handleCaptchaVerify}
+            onExpire={handleCaptchaExpire}
+            error={captchaError}
+          />
 
           <button
             type="submit"

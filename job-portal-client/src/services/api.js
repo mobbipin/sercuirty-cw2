@@ -12,7 +12,7 @@ const getAuthHeaders = () => {
 // API service functions
 export const apiService = {
   // Authentication
-  async login(email, password) {
+  async login(email, password, captchaToken) {
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
@@ -20,7 +20,7 @@ export const apiService = {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, captchaToken }),
       });
       const data = await response.json();
       

@@ -9,6 +9,7 @@ import UpdateJob from "../assets/Pages/UpdateJob";
 import Login from "../components/Login";
 import JobDetails from "../assets/Pages/JobDetails";
 import Signup from "../components/Signup";
+import ResetPassword from "../components/ResetPassword";
 
 const router = createBrowserRouter([
     {
@@ -45,6 +46,10 @@ const router = createBrowserRouter([
         {
           path: "/sign-up",
           element: <Signup/>
+        },
+        {
+          path: "/reset-password",
+          element: <ResetPassword/>
         }
       ],
     }

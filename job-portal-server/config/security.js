@@ -39,7 +39,7 @@ const SECURITY_CONFIG = {
   // Rate limiting
   RATE_LIMIT: {
     WINDOW_MS: 15 * 60 * 1000, // 15 minutes
-    MAX_REQUESTS: 100,
+    MAX_REQUESTS: 1000,
     MESSAGE: 'Too many requests from this IP, please try again later.'
   },
   

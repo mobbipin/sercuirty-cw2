@@ -432,6 +432,43 @@ router.post('/forgot-password', [
   }
 });
 
+// Validate reset token
+router.post('/validate-reset-token', [
+  body('token').notEmpty()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        errors: errors.array()
+      });
+    }
+
+    const { token } = req.body;
+
+    // Verify reset token
+    const resetData = passwordResetTokens.get(token);
+    if (!resetData || Date.now() > resetData.expiry) {
+      return res.json({
+        success: false,
+        message: 'Invalid or expired reset token'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Reset token is valid'
+    });
+  } catch (error) {
+    console.error('Token validation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Token validation failed'
+    });
+  }
+});
+
 // Reset password with token
 router.post('/reset-password', [
   body('token').notEmpty(),

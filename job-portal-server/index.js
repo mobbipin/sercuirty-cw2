@@ -813,11 +813,11 @@ async function run() {
       const result = await jobsCollections.insertOne(body);
       if(result.insertedId){
         return res.status(200).send(result);
-      }else{
-        return res.status(404).send({
-          message: "Failed to post job! Try again later",
-          status: false
-        })
+        }else{
+          return res.status(404).send({
+            message: "Failed to post job! Try again later",
+            status: false
+          })
       }
     })
 
@@ -855,10 +855,10 @@ async function run() {
         $set: {
           ...jobData
         },
-      };
-      const result = await jobsCollections.updateOne(filter, updateDoc, options);
-      res.send(result)
-    })
+    };
+    const result = await jobsCollections.updateOne(filter, updateDoc, options);
+    res.send(result)
+  })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });

@@ -28,7 +28,7 @@ const AuditLogViewer = () => {
         ...filters
       });
 
-      const response = await fetch(`http://localhost:3000/api/audit-logs?${queryParams}`, {
+      const response = await fetch(`http://localhost:5001/api/audit-logs?${queryParams}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

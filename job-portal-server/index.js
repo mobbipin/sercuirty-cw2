@@ -3,7 +3,7 @@ const app = express()
 const cors = require('cors')
 const session = require('express-session')
 const MongoStore = require('connect-mongo')
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 5001;
 require('dotenv').config()
 
 // Import security configurations
@@ -37,7 +37,7 @@ app.use(requestLogger);
 
 // CORS configuration
 app.use(cors({
-  origin: ["http://localhost:5173", "https://mern-job-portal-website.vercel.app"],
+  origin: ["http://localhost:5173"],
   methods: ["POST", "GET", "PUT", "DELETE", "PATCH"],
   credentials: true
 }));

@@ -90,7 +90,7 @@ const Login = () => {
     try {
       setIsLoading(true);
 
-      const response = await fetch(`http://localhost:3000/api/auth/forgot-password`, {
+      const response = await fetch(`http://localhost:5001/api/auth/forgot-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -298,7 +298,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={isLoading || loginAttempts >= 5}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
           >
             {isLoading ? 'Signing in...' : 'Sign in'}
           </button>

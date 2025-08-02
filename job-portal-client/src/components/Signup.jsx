@@ -97,7 +97,7 @@ const Signup = () => {
     try {
       setIsSubmitting(true);
 
-      const response = await fetch(`http://localhost:3000/api/auth/verify-email`, {
+      const response = await fetch(`http://localhost:5001/api/auth/verify-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -149,7 +149,7 @@ const Signup = () => {
     try {
       setIsSubmitting(true);
 
-             const response = await fetch(`http://localhost:3000/api/auth/resend-otp`, {
+             const response = await fetch(`http://localhost:5001/api/auth/resend-otp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

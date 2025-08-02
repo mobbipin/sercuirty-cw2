@@ -36,7 +36,7 @@ const ResetPassword = () => {
 
   const validateToken = async (resetToken) => {
     try {
-      const response = await fetch(`http://localhost:3000/api/auth/validate-reset-token`, {
+      const response = await fetch(`http://localhost:5001/api/auth/validate-reset-token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -80,7 +80,7 @@ const ResetPassword = () => {
     try {
       setIsSubmitting(true);
 
-      const response = await fetch(`http://localhost:3000/api/auth/reset-password`, {
+      const response = await fetch(`http://localhost:5001/api/auth/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

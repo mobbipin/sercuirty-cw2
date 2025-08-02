@@ -1,6 +1,6 @@
 const fetch = require('node-fetch');
 
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = 'http://localhost:5001';
 
 async function testSecurityFeatures() {
   console.log('🔐 Testing Job Portal Security Features...\n');

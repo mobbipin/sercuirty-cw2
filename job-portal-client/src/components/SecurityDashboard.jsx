@@ -22,7 +22,7 @@ const SecurityDashboard = () => {
   const fetchSecurityEvents = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3000/api/security/events', {
+      const response = await fetch('http://localhost:5001/api/security/events', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         }

@@ -12,7 +12,7 @@ const itemsPerPage = 4;
 
     useEffect(() => {
         setIsLoading(true)
-        fetch(`http://localhost:3000/myJobs/lakshay22dhoundiyal@gmail.com`).then(res => res.json()).then(data => {
+        fetch(`http://localhost:5001/myJobs/lakshay22dhoundiyal@gmail.com`).then(res => res.json()).then(data => {
           setJobs(data);
           setIsLoading(false);
         });
@@ -46,7 +46,7 @@ const itemsPerPage = 4;
 
     const handleDelete = (id) => {
       // console.log(id);
-      fetch(`http://localhost:3000/job/${id}`, {
+      fetch(`http://localhost:5001/job/${id}`, {
        method: "DELETE"
       })
       .then((res) => res.json)
@@ -180,17 +180,7 @@ const itemsPerPage = 4;
   }
 </div>
 
-<footer className="relative pt-8 pb-6 mt-16">
-  <div className="container mx-auto px-4">
-    <div className="flex flex-wrap items-center md:justify-between justify-center">
-      <div className="w-full md:w-6/12 px-4 mx-auto text-center">
-        <div className="text-sm text-blueGray-500 font-semibold py-1">
-          Copyright by &copy; <a href="https://lakshaydhoundiyalportfolio.netlify.app" className="text-blue hover:text-gray-800" target="_blank">Lakshay Dhoundiyal</a>. <a href="https://www.creative-tim.com" className="text-blueGray-500 hover:text-blueGray-800" target="_blank">All Rights Reserved.</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</footer>
+
 </section>
 
     </div>

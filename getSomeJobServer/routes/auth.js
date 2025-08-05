@@ -11,7 +11,9 @@ const {
   generateOTP,
   generateSessionId,
   logAuditEvent,
-  SECURITY_CONFIG
+  SECURITY_CONFIG,
+  checkPasswordExpiry,
+  verifyMFAToken
 } = require('../config/security');
 const emailService = require('../services/emailService');
 const recaptchaService = require('../services/recaptchaService');
@@ -299,6 +301,16 @@ router.post('/login', authLimiter, [
       });
     }
 
+    // Check password expiry
+    const passwordExpiry = checkPasswordExpiry(user.passwordHistory[0]?.createdAt || user.createdAt);
+    if (passwordExpiry.isExpired) {
+      return res.status(401).json({
+        success: false,
+        message: 'Password has expired. Please reset your password.',
+        requiresPasswordReset: true
+      });
+    }
+
     // Verify password
     const isPasswordValid = await comparePassword(password, user.password);
     if (!isPasswordValid) {
@@ -343,6 +355,17 @@ router.post('/login', authLimiter, [
       }
     );
 
+    // Check if MFA is enabled
+    if (user.mfaEnabled) {
+      // Return response indicating MFA is required
+      return res.status(200).json({
+        success: true,
+        message: 'MFA verification required',
+        requiresMFA: true,
+        email: user.email
+      });
+    }
+
     // Generate session
     const sessionId = generateSessionId();
     const token = generateToken({
@@ -361,7 +384,8 @@ router.post('/login', authLimiter, [
       userAgent
     );
 
-    res.json({
+    // Check if password expiry warning should be shown
+    const response = {
       success: true,
       message: 'Login successful',
       token,
@@ -372,13 +396,126 @@ router.post('/login', authLimiter, [
         role: user.role,
         company: user.company
       }
-    });
+    };
+
+    if (passwordExpiry.shouldWarn) {
+      response.passwordExpiryWarning = {
+        daysUntilExpiry: passwordExpiry.daysUntilExpiry,
+        message: `Your password will expire in ${passwordExpiry.daysUntilExpiry} days. Please change it soon.`
+      };
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({
       success: false,
       message: 'Login failed'
+    });
+  }
+});
+
+// MFA verification during login
+router.post('/verify-mfa-login', [
+  body('email').isEmail().normalizeEmail(),
+  body('token').isLength({ min: 6, max: 6 }).isNumeric()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        errors: errors.array()
+      });
+    }
+
+    const { email, token } = req.body;
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('User-Agent');
+
+    // Find user
+    const user = await req.db.collection('users').findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (!user.mfaEnabled) {
+      return res.status(400).json({
+        success: false,
+        message: 'MFA is not enabled for this account'
+      });
+    }
+
+    // Verify MFA token
+    const isValid = verifyMFAToken(token, user.mfaSecret);
+    if (!isValid) {
+      // Log failed attempt
+      logAuditEvent(
+        user._id.toString(),
+        'MFA_LOGIN_VERIFICATION_FAILED',
+        { email, reason: 'Invalid token' },
+        ipAddress,
+        userAgent
+      );
+
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid MFA token'
+      });
+    }
+
+    // Generate session
+    const sessionId = generateSessionId();
+    const authToken = generateToken({
+      userId: user._id.toString(),
+      email: user.email,
+      role: user.role,
+      sessionId
+    });
+
+    // Log successful verification
+    logAuditEvent(
+      user._id.toString(),
+      'MFA_LOGIN_VERIFICATION_SUCCESS',
+      { email },
+      ipAddress,
+      userAgent
+    );
+
+    // Check password expiry
+    const passwordExpiry = checkPasswordExpiry(user.passwordHistory[0]?.createdAt || user.createdAt);
+    
+    const response = {
+      success: true,
+      message: 'MFA verification successful',
+      token: authToken,
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        company: user.company
+      }
+    };
+
+    if (passwordExpiry.shouldWarn) {
+      response.passwordExpiryWarning = {
+        daysUntilExpiry: passwordExpiry.daysUntilExpiry,
+        message: `Your password will expire in ${passwordExpiry.daysUntilExpiry} days. Please change it soon.`
+      };
+    }
+
+    res.json(response);
+
+  } catch (error) {
+    console.error('MFA login verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'MFA verification failed'
     });
   }
 });

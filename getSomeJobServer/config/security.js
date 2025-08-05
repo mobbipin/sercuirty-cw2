@@ -16,7 +16,21 @@ const SECURITY_CONFIG = {
     REQUIRE_SPECIAL_CHARS: true,
     PREVENT_USERNAME_MATCH: true,
     PREVIOUS_PASSWORDS_COUNT: 5,
-    SALT_ROUNDS: 12
+    SALT_ROUNDS: 12,
+    EXPIRY_DAYS: 90, // Password expires after 90 days
+    WARNING_DAYS: 7   // Warn users 7 days before expiry
+  },
+  
+  // MFA Configuration
+  MFA: {
+    ENABLED: true,
+    ISSUER: 'Job Portal',
+    ALGORITHM: 'sha1',
+    DIGITS: 6,
+    PERIOD: 30,
+    WINDOW: 2, // Allow 2 time steps for clock skew
+    BACKUP_CODES_COUNT: 10,
+    BACKUP_CODE_LENGTH: 8
   },
   
   // Session configuration
@@ -25,7 +39,8 @@ const SECURITY_CONFIG = {
     MAX_AGE: 30 * 24 * 60 * 60 * 1000, // 30 days
     HTTP_ONLY: true,
     SECURE: process.env.NODE_ENV === 'production',
-    SAME_SITE: 'strict'
+    SAME_SITE: 'strict',
+    CONCURRENT_SESSIONS: 3 // Maximum concurrent sessions per user
   },
   
   // JWT configuration
@@ -47,6 +62,23 @@ const SECURITY_CONFIG = {
   EMAIL: {
     OTP_EXPIRES_IN: 10 * 60 * 1000, // 10 minutes
     OTP_LENGTH: 6
+  },
+  
+  // Payment configuration
+  PAYMENT: {
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+    CURRENCY: 'usd',
+    MIN_AMOUNT: 100, // $1.00 minimum
+    MAX_AMOUNT: 1000000 // $10,000 maximum
+  },
+  
+  // Data encryption
+  ENCRYPTION: {
+    ALGORITHM: 'aes-256-gcm',
+    KEY_LENGTH: 32,
+    IV_LENGTH: 16,
+    TAG_LENGTH: 16
   }
 };
 
@@ -129,6 +161,99 @@ const generateOTP = () => {
 // Generate session ID
 const generateSessionId = () => {
   return crypto.randomBytes(32).toString('hex');
+};
+
+// MFA Functions
+const speakeasy = require('speakeasy');
+const QRCode = require('qrcode');
+
+// Generate MFA secret
+const generateMFASecret = (email) => {
+  return speakeasy.generateSecret({
+    name: `${SECURITY_CONFIG.MFA.ISSUER} (${email})`,
+    issuer: SECURITY_CONFIG.MFA.ISSUER,
+    algorithm: SECURITY_CONFIG.MFA.ALGORITHM,
+    digits: SECURITY_CONFIG.MFA.DIGITS,
+    period: SECURITY_CONFIG.MFA.PERIOD
+  });
+};
+
+// Generate QR code for MFA setup
+const generateMFACode = async (secret) => {
+  try {
+    const qrCode = await QRCode.toDataURL(secret.otpauth_url);
+    return qrCode;
+  } catch (error) {
+    console.error('QR code generation error:', error);
+    return null;
+  }
+};
+
+// Verify MFA token
+const verifyMFAToken = (token, secret) => {
+  return speakeasy.totp.verify({
+    secret: secret,
+    encoding: 'base32',
+    token: token,
+    window: SECURITY_CONFIG.MFA.WINDOW,
+    algorithm: SECURITY_CONFIG.MFA.ALGORITHM,
+    digits: SECURITY_CONFIG.MFA.DIGITS,
+    period: SECURITY_CONFIG.MFA.PERIOD
+  });
+};
+
+// Generate backup codes
+const generateBackupCodes = () => {
+  const codes = [];
+  for (let i = 0; i < SECURITY_CONFIG.MFA.BACKUP_CODES_COUNT; i++) {
+    codes.push(crypto.randomBytes(SECURITY_CONFIG.MFA.BACKUP_CODE_LENGTH / 2).toString('hex').toUpperCase());
+  }
+  return codes;
+};
+
+// Verify backup code
+const verifyBackupCode = (code, backupCodes) => {
+  return backupCodes.includes(code.toUpperCase());
+};
+
+// Password expiry functions
+const checkPasswordExpiry = (passwordCreatedAt) => {
+  const now = new Date();
+  const created = new Date(passwordCreatedAt);
+  const daysSinceCreation = Math.floor((now - created) / (1000 * 60 * 60 * 24));
+  
+  return {
+    isExpired: daysSinceCreation >= SECURITY_CONFIG.PASSWORD.EXPIRY_DAYS,
+    daysUntilExpiry: SECURITY_CONFIG.PASSWORD.EXPIRY_DAYS - daysSinceCreation,
+    shouldWarn: daysSinceCreation >= (SECURITY_CONFIG.PASSWORD.EXPIRY_DAYS - SECURITY_CONFIG.PASSWORD.WARNING_DAYS)
+  };
+};
+
+// Data encryption functions
+const encryptData = (data, key) => {
+  const iv = crypto.randomBytes(SECURITY_CONFIG.ENCRYPTION.IV_LENGTH);
+  const cipher = crypto.createCipher(SECURITY_CONFIG.ENCRYPTION.ALGORITHM, key);
+  
+  let encrypted = cipher.update(data, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  
+  const tag = cipher.getAuthTag();
+  
+  return {
+    encrypted,
+    iv: iv.toString('hex'),
+    tag: tag.toString('hex')
+  };
+};
+
+const decryptData = (encryptedData, key, iv, tag) => {
+  const decipher = crypto.createDecipher(SECURITY_CONFIG.ENCRYPTION.ALGORITHM, key);
+  decipher.setAuthTag(Buffer.from(tag, 'hex'));
+  
+  let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  
+  return decrypted;
 };
 
 // Audit logger configuration
@@ -225,5 +350,16 @@ module.exports = {
   logAuditEvent,
   securityMiddleware,
   sessionConfig,
-  auditLogger
+  auditLogger,
+  // MFA functions
+  generateMFASecret,
+  generateMFACode,
+  verifyMFAToken,
+  generateBackupCodes,
+  verifyBackupCode,
+  // Password expiry functions
+  checkPasswordExpiry,
+  // Data encryption functions
+  encryptData,
+  decryptData
 };

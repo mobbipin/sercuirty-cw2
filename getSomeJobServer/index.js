@@ -10,7 +10,8 @@ require('dotenv').config()
 const {
   securityMiddleware,
   sessionConfig,
-  logAuditEvent
+  logAuditEvent,
+  SECURITY_CONFIG
 } = require('./config/security');
 
 // Import authentication middleware
@@ -539,8 +540,48 @@ async function run() {
     // Import and use authentication routes
     const authRoutes = require('./routes/auth');
     const securityRoutes = require('./routes/security');
+    const mfaRoutes = require('./routes/mfa');
+    const paymentRoutes = require('./routes/payment');
+    
     app.use('/api/auth', authRateLimiter, authRoutes);
     app.use('/api/security', securityRoutes);
+    app.use('/api/mfa', mfaRoutes);
+    app.use('/api/payment', paymentRoutes);
+
+    // Enhanced session management
+    app.use(async (req, res, next) => {
+      if (req.user) {
+        // Check concurrent sessions
+        const activeSessions = await req.db.collection('sessions').countDocuments({
+          userId: req.user.userId,
+          expiresAt: { $gt: new Date() }
+        });
+
+        if (activeSessions >= SECURITY_CONFIG.SESSION.CONCURRENT_SESSIONS) {
+          // Remove oldest sessions
+          const oldestSessions = await req.db.collection('sessions')
+            .find({ userId: req.user.userId })
+            .sort({ createdAt: 1 })
+            .limit(activeSessions - SECURITY_CONFIG.SESSION.CONCURRENT_SESSIONS + 1)
+            .toArray();
+
+          for (const session of oldestSessions) {
+            await req.db.collection('sessions').deleteOne({ _id: session._id });
+          }
+        }
+
+        // Store current session
+        await req.db.collection('sessions').insertOne({
+          userId: req.user.userId,
+          sessionId: req.user.sessionId,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent'),
+          createdAt: new Date(),
+          expiresAt: new Date(Date.now() + SECURITY_CONFIG.SESSION.MAX_AGE)
+        });
+      }
+      next();
+    });
 
     // Job APIs with security
     app.post("/api/jobs", authenticateUser, requireRole(['employer']), async (req, res) => {
